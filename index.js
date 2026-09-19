@@ -6,7 +6,7 @@ const app = express();
 app.use(cors());
 
 // 상태를 확인할 채널 ID (환경변수로도 덮어쓸 수 있게 해둠)
-const CHANNEL_ID = process.env.CHZZK_CHANNEL_ID || '73e605f0102e08c78d30e62414ad2542';
+const CHANNEL_ID = process.env.CHZZK_CHANNEL_ID || 'bb382c2c0cc9fa7c86ab3b037fb5799c';
 
 // 치지직 라이브 상태 조회
 app.get('/api/live-status', async (req, res) => {
