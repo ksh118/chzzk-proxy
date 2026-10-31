@@ -49,6 +49,52 @@ app.get('/api/live-status', async (req, res) => {
   }
 });
 
+// 치지직 채팅 접속 정보 (chatChannelId + 접속 토큰) — 브라우저는 CORS 때문에 직접 못 받아요
+app.get('/api/chat-info', async (req, res) => {
+  const UA =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+  try {
+    const channelId = String(req.query.channelId || CHANNEL_ID);
+    if (!/^[0-9a-f]{32}$/i.test(channelId)) {
+      return res.status(400).json({ message: '채널 ID 형식이 올바르지 않아요 (32자리).' });
+    }
+    const headers = { 'User-Agent': UA };
+
+    const detail = await axios.get(
+      `https://api.chzzk.naver.com/service/v2/channels/${channelId}/live-detail`,
+      { headers, timeout: 8000 }
+    );
+    const c = detail.data && detail.data.content;
+    const chatChannelId = c && c.chatChannelId;
+    if (!chatChannelId) {
+      return res
+        .status(404)
+        .json({ message: '채팅 채널을 찾지 못했어요. 방송 중인지 확인해 주세요.' });
+    }
+
+    const tk = await axios.get('https://comm-api.game.naver.com/nng_main/v1/chats/access-token', {
+      params: { channelId: chatChannelId, chatType: 'STREAMING' },
+      headers,
+      timeout: 8000,
+    });
+    const tc = tk.data && tk.data.content;
+    if (!tc || !tc.accessToken) {
+      return res.status(502).json({ message: '채팅 접속 토큰을 받지 못했어요.' });
+    }
+
+    res.set('Cache-Control', 'no-store');
+    return res.json({
+      chatChannelId,
+      accessToken: tc.accessToken,
+      extraToken: tc.extraToken || '',
+      isLive: c.status === 'OPEN',
+    });
+  } catch (err) {
+    console.error('CHZZK chat-info error:', err.message);
+    return res.status(502).json({ message: '치지직 서버 응답 오류: ' + err.message });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ ok: true });
 });
